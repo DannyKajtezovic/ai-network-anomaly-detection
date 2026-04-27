@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard AI — Anomaly Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #030a0f;
+    --panel: #071218;
+    --border: #0f3a4a;
+    --accent: #00e5ff;
+    --red: #ff2d55;
+    --yellow: #ffd60a;
+    --green: #00ff9f;
+    --text: #cde8f0;
+    --muted: #3a6070;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; padding: 24px; max-width: 1400px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon { width: 44px; height: 44px; border: 2px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px rgba(0,229,255,0.3); animation: pulse 3s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 20px rgba(0,229,255,0.3); } 50% { box-shadow: 0 0 40px rgba(0,229,255,0.6); } }
+  h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: 2px; }
+  h1 span { color: var(--accent); }
+  .status-bar { display: flex; align-items: center; gap: 8px; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--green); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 1.5s ease-in-out infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; overflow: hidden; transition: border-color 0.3s; }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.total::before { background: var(--accent); }
+  .stat-card.high::before { background: var(--red); }
+  .stat-card.medium::before { background: var(--yellow); }
+  .stat-label { font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .stat-value { font-size: 3rem; font-weight: 800; line-height: 1; font-family: 'Share Tech Mono', monospace; }
+  .stat-card.total .stat-value { color: var(--accent); }
+  .stat-card.high .stat-value { color: var(--red); }
+  .stat-card.medium .stat-value { color: var(--yellow); }
+  .section-title { font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .alert-feed { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .alert-row { display: grid; grid-template-columns: 160px 1fr 1fr 80px 100px 90px; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(15,58,74,0.5); font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; transition: background 0.2s; animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+  .alert-row:hover { background: rgba(0,229,255,0.04); }
+  .alert-row.header { color: var(--muted); font-size: 0.7rem; letter-spacing: 1px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.3); animation: none; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; letter-spacing: 1px; }
+  .badge.HIGH { background: rgba(255,45,85,0.15); color: var(--red); border: 1px solid rgba(255,45,85,0.4); }
+  .badge.MEDIUM { background: rgba(255,214,10,0.1); color: var(--yellow); border: 1px solid rgba(255,214,10,0.3); }
+  .score-bar { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; background: var(--red); transition: width 0.5s ease; }
+  .empty-state { padding: 60px; text-align: center; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .refresh-info { font-family: 'Share Tech Mono', monospace; font-size: 0.72rem; color: var(--muted); text-align: right; margin-top: 12px; }
+  #countdown { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <div>
+        <h1>NET<span>GUARD</span> AI</h1>
+        <div style="font-size:0.72rem;color:var(--muted);letter-spacing:2px;">ANOMALY DETECTION SYSTEM</div>
+      </div>
+    </div>
+    <div class="status-bar"><div class="dot"></div>MONITORING ACTIVE</div>
+  </header>
+  <div class="stats-grid">
+    <div class="stat-card total"><div class="stat-label">Total Alerts</div><div class="stat-value" id="stat-total">—</div></div>
+    <div class="stat-card high"><div class="stat-label">High Severity</div><div class="stat-value" id="stat-high">—</div></div>
+    <div class="stat-card medium"><div class="stat-label">Medium Severity</div><div class="stat-value" id="stat-medium">—</div></div>
+  </div>
+  <div class="section-title">Live Alert Feed</div>
+  <div class="alert-feed">
+    <div class="alert-row header">
+      <span>TIMESTAMP</span><span>SOURCE IP</span><span>DEST IP</span><span>PROTO</span><span>ANOMALY SCORE</span><span>SEVERITY</span>
+    </div>
+    <div id="alert-body"></div>
+  </div>
+  <div class="refresh-info">Auto-refreshes in <span id="countdown">10</span>s</div>
+</div>
+<script>
+  let countdown = 10;
+  async function fetchStats() {
+    try {
+      const r = await fetch('/api/stats');
+      const d = await r.json();
+      document.getElementById('stat-total').textContent = d.total;
+      document.getElementById('stat-high').textContent = d.high;
+      document.getElementById('stat-medium').textContent = d.medium;
+    } catch(e) {}
+  }
+  async function fetchAlerts() {
+    try {
+      const r = await fetch('/api/alerts');
+      const alerts = await r.json();
+      const body = document.getElementById('alert-body');
+      if (!alerts.length) {
+        body.innerHTML = `<div class="empty-state"><div class="icon">✅</div><div>No anomalies detected yet.</div></div>`;
+        return;
+      }
+      const reversed = [...alerts].reverse();
+      body.innerHTML = reversed.map(a => {
+        const pct = Math.min((a.score / 0.05) * 100, 100).toFixed(1);
+        return `<div class="alert-row">
+          <span>${a.timestamp}</span><span>${a.src_ip}</span><span>${a.dst_ip}</span>
+          <span>${a.protocol}</span>
+          <div class="score-bar"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><span>${a.score}</span></div>
+          <span><span class="badge ${a.severity}">${a.severity}</span></span>
+        </div>`;
+      }).join('');
+    } catch(e) {}
+  }
+  function refresh() { fetchStats(); fetchAlerts(); countdown = 10; }
+  refresh();
+  setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    if (countdown <= 0) refresh();
+  }, 1000);
+</script>
+</body>
+</html>
